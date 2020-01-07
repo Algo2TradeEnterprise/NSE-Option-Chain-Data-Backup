@@ -243,168 +243,253 @@ Public Class frmMain
         Try
             Dim stockList As List(Of String) = Await GetAllStockList().ConfigureAwait(False)
             If stockList IsNot Nothing AndAlso stockList.Count > 0 Then
-                Dim stkCtr As Integer = 0
-                For Each runningStock In stockList
-                    stkCtr += 1
-                    OnHeartbeatMain(String.Format("Running for: {0} #{1}/{2}", runningStock, stkCtr, stockList.Count))
-                    Dim openPositionDataURL As String = Nothing
-                    If runningStock = "NIFTY" OrElse runningStock = "BANKNIFTY" OrElse runningStock = "NIFTYIT" Then
-                        openPositionDataURL = String.Format(NSEIDXOptionChainURL, runningStock)
-                    Else
-                        openPositionDataURL = String.Format(NSESTKOptionChainURL, runningStock)
-                    End If
-                    Dim outputResponse As HtmlDocument = Nothing
-                    Dim proxyToBeUsed As HttpProxy = Nothing
-                    Using browser As New HttpBrowser(proxyToBeUsed, Net.DecompressionMethods.GZip, New TimeSpan(0, 1, 0), canceller)
-                        AddHandler browser.DocumentDownloadComplete, AddressOf OnDocumentDownloadComplete
-                        AddHandler browser.Heartbeat, AddressOf OnHeartbeat
-                        AddHandler browser.WaitingFor, AddressOf OnWaitingFor
-                        AddHandler browser.DocumentRetryStatus, AddressOf OnDocumentRetryStatus
+                Using sqlHlpr As New MySQLDBHelper(My.Settings.ServerName, "local_stock", "3306", "rio", "speech123", canceller)
+                    AddHandler sqlHlpr.Heartbeat, AddressOf OnHeartbeat
+                    AddHandler sqlHlpr.DocumentDownloadComplete, AddressOf OnDocumentDownloadComplete
+                    AddHandler sqlHlpr.DocumentRetryStatus, AddressOf OnDocumentRetryStatus
+                    AddHandler sqlHlpr.WaitingFor, AddressOf OnWaitingFor
 
-                        browser.KeepAlive = True
-                        Dim headersToBeSent As New Dictionary(Of String, String)
-                        headersToBeSent.Add("Host", "www.nseindia.com")
-                        headersToBeSent.Add("Upgrade-Insecure-Requests", "1")
-                        headersToBeSent.Add("Sec-Fetch-Mode", "navigate")
-                        headersToBeSent.Add("Sec-Fetch-Site", "none")
-
-                        Dim l As Tuple(Of Uri, Object) = Await browser.NonPOSTRequestAsync(openPositionDataURL,
-                                                                                        HttpMethod.Get,
-                                                                                        Nothing,
-                                                                                        False,
-                                                                                        headersToBeSent,
-                                                                                        True,
-                                                                                        "text/html").ConfigureAwait(False)
-                        If l IsNot Nothing AndAlso l.Item2 IsNot Nothing Then
-                            outputResponse = l.Item2
+                    Dim stkCtr As Integer = 0
+                    For Each runningStock In stockList
+                        stkCtr += 1
+                        OnHeartbeatMain(String.Format("Running for: {0} #{1}/{2}", runningStock, stkCtr, stockList.Count))
+                        Dim openPositionDataURL As String = Nothing
+                        If runningStock = "NIFTY" OrElse runningStock = "BANKNIFTY" OrElse runningStock = "NIFTYIT" Then
+                            openPositionDataURL = String.Format(NSEIDXOptionChainURL, runningStock)
+                        Else
+                            openPositionDataURL = String.Format(NSESTKOptionChainURL, runningStock)
                         End If
-                        RemoveHandler browser.DocumentDownloadComplete, AddressOf OnDocumentDownloadComplete
-                        RemoveHandler browser.Heartbeat, AddressOf OnHeartbeat
-                        RemoveHandler browser.WaitingFor, AddressOf OnWaitingFor
-                        RemoveHandler browser.DocumentRetryStatus, AddressOf OnDocumentRetryStatus
-                    End Using
+                        Dim outputResponse As HtmlDocument = Nothing
+                        Dim proxyToBeUsed As HttpProxy = Nothing
+                        Using browser As New HttpBrowser(proxyToBeUsed, Net.DecompressionMethods.GZip, New TimeSpan(0, 1, 0), canceller)
+                            AddHandler browser.DocumentDownloadComplete, AddressOf OnDocumentDownloadComplete
+                            AddHandler browser.Heartbeat, AddressOf OnHeartbeat
+                            AddHandler browser.WaitingFor, AddressOf OnWaitingFor
+                            AddHandler browser.DocumentRetryStatus, AddressOf OnDocumentRetryStatus
 
-                    If outputResponse IsNot Nothing AndAlso outputResponse.DocumentNode IsNot Nothing Then
-                        OnHeartbeat("Extracting Option Chain from HTML")
-                        Dim calls As List(Of OptionChain) = Nothing
-                        Dim puts As List(Of OptionChain) = Nothing
-                        If outputResponse.DocumentNode.SelectNodes("//table[@id='octable']") IsNot Nothing Then
-                            For Each table As HtmlNode In outputResponse.DocumentNode.SelectNodes("//table[@id='octable']")
-                                canceller.Token.ThrowIfCancellationRequested()
-                                If table IsNot Nothing AndAlso table.SelectNodes("tr") IsNot Nothing Then
-                                    For Each row As HtmlNode In table.SelectNodes("tr")
-                                        canceller.Token.ThrowIfCancellationRequested()
-                                        If row IsNot Nothing AndAlso row.SelectNodes("td") IsNot Nothing Then
-                                            Dim callData As OptionChain = Nothing
-                                            Dim putData As OptionChain = Nothing
-                                            Dim counter As Integer = 0
-                                            For Each cell As HtmlNode In row.SelectNodes("td")
-                                                canceller.Token.ThrowIfCancellationRequested()
-                                                If cell IsNot Nothing AndAlso cell.InnerText IsNot Nothing AndAlso cell.InnerText <> "" Then
-                                                    If cell.InnerText.Trim = "Total" Then
-                                                        Exit For
+                            browser.KeepAlive = True
+                            Dim headersToBeSent As New Dictionary(Of String, String)
+                            headersToBeSent.Add("Host", "www.nseindia.com")
+                            headersToBeSent.Add("Upgrade-Insecure-Requests", "1")
+                            headersToBeSent.Add("Sec-Fetch-Mode", "navigate")
+                            headersToBeSent.Add("Sec-Fetch-Site", "none")
+
+                            Dim l As Tuple(Of Uri, Object) = Await browser.NonPOSTRequestAsync(openPositionDataURL,
+                                                                                            HttpMethod.Get,
+                                                                                            Nothing,
+                                                                                            False,
+                                                                                            headersToBeSent,
+                                                                                            True,
+                                                                                            "text/html").ConfigureAwait(False)
+                            If l IsNot Nothing AndAlso l.Item2 IsNot Nothing Then
+                                outputResponse = l.Item2
+                            End If
+                            RemoveHandler browser.DocumentDownloadComplete, AddressOf OnDocumentDownloadComplete
+                            RemoveHandler browser.Heartbeat, AddressOf OnHeartbeat
+                            RemoveHandler browser.WaitingFor, AddressOf OnWaitingFor
+                            RemoveHandler browser.DocumentRetryStatus, AddressOf OnDocumentRetryStatus
+                        End Using
+
+                        If outputResponse IsNot Nothing AndAlso outputResponse.DocumentNode IsNot Nothing Then
+                            OnHeartbeat("Extracting Option Chain from HTML")
+                            Dim calls As List(Of OptionChain) = Nothing
+                            Dim puts As List(Of OptionChain) = Nothing
+                            If outputResponse.DocumentNode.SelectNodes("//table[@id='octable']") IsNot Nothing Then
+                                For Each table As HtmlNode In outputResponse.DocumentNode.SelectNodes("//table[@id='octable']")
+                                    canceller.Token.ThrowIfCancellationRequested()
+                                    If table IsNot Nothing AndAlso table.SelectNodes("tr") IsNot Nothing Then
+                                        For Each row As HtmlNode In table.SelectNodes("tr")
+                                            canceller.Token.ThrowIfCancellationRequested()
+                                            If row IsNot Nothing AndAlso row.SelectNodes("td") IsNot Nothing Then
+                                                Dim callData As OptionChain = Nothing
+                                                Dim putData As OptionChain = Nothing
+                                                Dim counter As Integer = 0
+                                                For Each cell As HtmlNode In row.SelectNodes("td")
+                                                    canceller.Token.ThrowIfCancellationRequested()
+                                                    If cell IsNot Nothing AndAlso cell.InnerText IsNot Nothing AndAlso cell.InnerText <> "" Then
+                                                        If cell.InnerText.Trim = "Total" Then
+                                                            Exit For
+                                                        End If
+                                                        If callData Is Nothing Then callData = New OptionChain
+                                                        If putData Is Nothing Then putData = New OptionChain
+                                                        counter += 1
+                                                        If counter = 1 Then
+                                                            callData.OI = If(cell.InnerText.Trim = "-", Decimal.MinValue, cell.InnerText.Trim)
+                                                        ElseIf counter = 2 Then
+                                                            callData.ChangeInOI = If(cell.InnerText.Trim = "-", Decimal.MinValue, cell.InnerText.Trim)
+                                                        ElseIf counter = 3 Then
+                                                            callData.Volume = If(cell.InnerText.Trim = "-", Decimal.MinValue, cell.InnerText.Trim)
+                                                        ElseIf counter = 4 Then
+                                                            callData.IV = If(cell.InnerText.Trim = "-", Decimal.MinValue, cell.InnerText.Trim)
+                                                        ElseIf counter = 5 Then
+                                                            callData.LTP = If(cell.InnerText.Trim = "-", Decimal.MinValue, cell.InnerText.Trim)
+                                                        ElseIf counter = 6 Then
+                                                            callData.NetChange = If(cell.InnerText.Trim = "-", Decimal.MinValue, cell.InnerText.Trim)
+                                                        ElseIf counter = 7 Then
+                                                            callData.BidQuantity = If(cell.InnerText.Trim = "-", Decimal.MinValue, cell.InnerText.Trim)
+                                                        ElseIf counter = 8 Then
+                                                            callData.BidPrice = If(cell.InnerText.Trim = "-", Decimal.MinValue, cell.InnerText.Trim)
+                                                        ElseIf counter = 9 Then
+                                                            callData.AskPrice = If(cell.InnerText.Trim = "-", Decimal.MinValue, cell.InnerText.Trim)
+                                                        ElseIf counter = 10 Then
+                                                            callData.AskQuantity = If(cell.InnerText.Trim = "-", Decimal.MinValue, cell.InnerText.Trim)
+                                                        ElseIf counter = 11 Then
+                                                            callData.StrikePrice = If(cell.InnerText.Trim = "-", Decimal.MinValue, cell.InnerText.Trim)
+                                                            putData.StrikePrice = If(cell.InnerText.Trim = "-", Decimal.MinValue, cell.InnerText.Trim)
+                                                        ElseIf counter = 12 Then
+                                                            putData.BidQuantity = If(cell.InnerText.Trim = "-", Decimal.MinValue, cell.InnerText.Trim)
+                                                        ElseIf counter = 13 Then
+                                                            putData.BidPrice = If(cell.InnerText.Trim = "-", Decimal.MinValue, cell.InnerText.Trim)
+                                                        ElseIf counter = 14 Then
+                                                            putData.AskPrice = If(cell.InnerText.Trim = "-", Decimal.MinValue, cell.InnerText.Trim)
+                                                        ElseIf counter = 15 Then
+                                                            putData.AskQuantity = If(cell.InnerText.Trim = "-", Decimal.MinValue, cell.InnerText.Trim)
+                                                        ElseIf counter = 16 Then
+                                                            putData.NetChange = If(cell.InnerText.Trim = "-", Decimal.MinValue, cell.InnerText.Trim)
+                                                        ElseIf counter = 17 Then
+                                                            putData.LTP = If(cell.InnerText.Trim = "-", Decimal.MinValue, cell.InnerText.Trim)
+                                                        ElseIf counter = 18 Then
+                                                            putData.IV = If(cell.InnerText.Trim = "-", Decimal.MinValue, cell.InnerText.Trim)
+                                                        ElseIf counter = 19 Then
+                                                            putData.Volume = If(cell.InnerText.Trim = "-", Decimal.MinValue, cell.InnerText.Trim)
+                                                        ElseIf counter = 20 Then
+                                                            putData.ChangeInOI = If(cell.InnerText.Trim = "-", Decimal.MinValue, cell.InnerText.Trim)
+                                                        ElseIf counter = 21 Then
+                                                            putData.OI = If(cell.InnerText.Trim = "-", Decimal.MinValue, cell.InnerText.Trim)
+                                                        End If
                                                     End If
-                                                    If callData Is Nothing Then callData = New OptionChain
-                                                    If putData Is Nothing Then putData = New OptionChain
-                                                    counter += 1
-                                                    If counter = 1 Then
-                                                        callData.OI = If(cell.InnerText.Trim = "-", Decimal.MinValue, cell.InnerText.Trim)
-                                                    ElseIf counter = 2 Then
-                                                        callData.ChangeInOI = If(cell.InnerText.Trim = "-", Decimal.MinValue, cell.InnerText.Trim)
-                                                    ElseIf counter = 3 Then
-                                                        callData.Volume = If(cell.InnerText.Trim = "-", Decimal.MinValue, cell.InnerText.Trim)
-                                                    ElseIf counter = 4 Then
-                                                        callData.IV = If(cell.InnerText.Trim = "-", Decimal.MinValue, cell.InnerText.Trim)
-                                                    ElseIf counter = 5 Then
-                                                        callData.LTP = If(cell.InnerText.Trim = "-", Decimal.MinValue, cell.InnerText.Trim)
-                                                    ElseIf counter = 6 Then
-                                                        callData.NetChange = If(cell.InnerText.Trim = "-", Decimal.MinValue, cell.InnerText.Trim)
-                                                    ElseIf counter = 7 Then
-                                                        callData.BidQuantity = If(cell.InnerText.Trim = "-", Decimal.MinValue, cell.InnerText.Trim)
-                                                    ElseIf counter = 8 Then
-                                                        callData.BidPrice = If(cell.InnerText.Trim = "-", Decimal.MinValue, cell.InnerText.Trim)
-                                                    ElseIf counter = 9 Then
-                                                        callData.AskPrice = If(cell.InnerText.Trim = "-", Decimal.MinValue, cell.InnerText.Trim)
-                                                    ElseIf counter = 10 Then
-                                                        callData.AskQuantity = If(cell.InnerText.Trim = "-", Decimal.MinValue, cell.InnerText.Trim)
-                                                    ElseIf counter = 11 Then
-                                                        callData.StrikePrice = If(cell.InnerText.Trim = "-", Decimal.MinValue, cell.InnerText.Trim)
-                                                        putData.StrikePrice = If(cell.InnerText.Trim = "-", Decimal.MinValue, cell.InnerText.Trim)
-                                                    ElseIf counter = 12 Then
-                                                        putData.BidQuantity = If(cell.InnerText.Trim = "-", Decimal.MinValue, cell.InnerText.Trim)
-                                                    ElseIf counter = 13 Then
-                                                        putData.BidPrice = If(cell.InnerText.Trim = "-", Decimal.MinValue, cell.InnerText.Trim)
-                                                    ElseIf counter = 14 Then
-                                                        putData.AskPrice = If(cell.InnerText.Trim = "-", Decimal.MinValue, cell.InnerText.Trim)
-                                                    ElseIf counter = 15 Then
-                                                        putData.AskQuantity = If(cell.InnerText.Trim = "-", Decimal.MinValue, cell.InnerText.Trim)
-                                                    ElseIf counter = 16 Then
-                                                        putData.NetChange = If(cell.InnerText.Trim = "-", Decimal.MinValue, cell.InnerText.Trim)
-                                                    ElseIf counter = 17 Then
-                                                        putData.LTP = If(cell.InnerText.Trim = "-", Decimal.MinValue, cell.InnerText.Trim)
-                                                    ElseIf counter = 18 Then
-                                                        putData.IV = If(cell.InnerText.Trim = "-", Decimal.MinValue, cell.InnerText.Trim)
-                                                    ElseIf counter = 19 Then
-                                                        putData.Volume = If(cell.InnerText.Trim = "-", Decimal.MinValue, cell.InnerText.Trim)
-                                                    ElseIf counter = 20 Then
-                                                        putData.ChangeInOI = If(cell.InnerText.Trim = "-", Decimal.MinValue, cell.InnerText.Trim)
-                                                    ElseIf counter = 21 Then
-                                                        putData.OI = If(cell.InnerText.Trim = "-", Decimal.MinValue, cell.InnerText.Trim)
-                                                    End If
+                                                Next
+                                                If callData IsNot Nothing Then
+                                                    If calls Is Nothing Then calls = New List(Of OptionChain)
+                                                    calls.Add(callData)
                                                 End If
-                                            Next
-                                            If callData IsNot Nothing Then
-                                                If calls Is Nothing Then calls = New List(Of OptionChain)
-                                                calls.Add(callData)
+                                                If putData IsNot Nothing Then
+                                                    If puts Is Nothing Then puts = New List(Of OptionChain)
+                                                    puts.Add(putData)
+                                                End If
                                             End If
-                                            If putData IsNot Nothing Then
-                                                If puts Is Nothing Then puts = New List(Of OptionChain)
-                                                puts.Add(putData)
-                                            End If
-                                        End If
-                                    Next
-                                End If
-                            Next
-                        End If
-                        canceller.Token.ThrowIfCancellationRequested()
-
-                        OnHeartbeat("Creating table of option chain data")
-                        Dim dt As DataTable = New DataTable
-
-                        canceller.Token.ThrowIfCancellationRequested()
-                        If calls IsNot Nothing AndAlso calls.Count > 0 AndAlso puts IsNot Nothing AndAlso puts.Count > 0 AndAlso calls.Count = puts.Count Then
+                                        Next
+                                    End If
+                                Next
+                            End If
                             canceller.Token.ThrowIfCancellationRequested()
-                            For runningItem As Integer = 0 To calls.Count - 1
+
+                            OnHeartbeat("Creating table of option chain data")
+                            Dim dt As DataTable = New DataTable
+
+                            canceller.Token.ThrowIfCancellationRequested()
+                            If calls IsNot Nothing AndAlso calls.Count > 0 AndAlso puts IsNot Nothing AndAlso puts.Count > 0 AndAlso calls.Count = puts.Count Then
                                 canceller.Token.ThrowIfCancellationRequested()
-                                Dim row As DataRow = dt.NewRow
-                                row("Calls OI") = If(calls(runningItem).OI <> Decimal.MinValue, calls(runningItem).OI, "-")
-                                row("Calls ChangeInOI") = If(calls(runningItem).ChangeInOI <> Decimal.MinValue, calls(runningItem).ChangeInOI, "-")
-                                row("Calls Volume") = If(calls(runningItem).Volume <> Decimal.MinValue, calls(runningItem).Volume, "-")
-                                row("Calls IV") = If(calls(runningItem).IV <> Decimal.MinValue, calls(runningItem).IV, "-")
-                                row("Calls LTP") = If(calls(runningItem).LTP <> Decimal.MinValue, calls(runningItem).LTP, "-")
-                                row("Calls NetChange") = If(calls(runningItem).NetChange <> Decimal.MinValue, calls(runningItem).NetChange, "-")
-                                row("Calls BidQuantity") = If(calls(runningItem).BidQuantity <> Decimal.MinValue, calls(runningItem).BidQuantity, "-")
-                                row("Calls BidPrice") = If(calls(runningItem).BidPrice <> Decimal.MinValue, calls(runningItem).BidPrice, "-")
-                                row("Calls AskPrice") = If(calls(runningItem).AskPrice <> Decimal.MinValue, calls(runningItem).AskPrice, "-")
-                                row("Calls AskQuantity") = If(calls(runningItem).AskQuantity <> Decimal.MinValue, calls(runningItem).AskQuantity, "-")
-                                row("StrikePrice") = If(calls(runningItem).StrikePrice <> Decimal.MinValue, calls(runningItem).StrikePrice, "-")
-                                row("Puts BidQuantity") = If(puts(runningItem).BidQuantity <> Decimal.MinValue, puts(runningItem).BidQuantity, "-")
-                                row("Puts BidPrice") = If(puts(runningItem).BidPrice <> Decimal.MinValue, puts(runningItem).BidPrice, "-")
-                                row("Puts AskPrice") = If(puts(runningItem).AskPrice <> Decimal.MinValue, puts(runningItem).AskPrice, "-")
-                                row("Puts AskQuantity") = If(puts(runningItem).AskQuantity <> Decimal.MinValue, puts(runningItem).AskQuantity, "-")
-                                row("Puts NetChange") = If(puts(runningItem).NetChange <> Decimal.MinValue, puts(runningItem).NetChange, "-")
-                                row("Puts LTP") = If(puts(runningItem).LTP <> Decimal.MinValue, puts(runningItem).LTP, "-")
-                                row("Puts IV") = If(puts(runningItem).IV <> Decimal.MinValue, puts(runningItem).IV, "-")
-                                row("Puts Volume") = If(puts(runningItem).Volume <> Decimal.MinValue, puts(runningItem).Volume, "-")
-                                row("Puts ChangeInOI") = If(puts(runningItem).ChangeInOI <> Decimal.MinValue, puts(runningItem).ChangeInOI, "-")
-                                row("Puts OI") = If(puts(runningItem).OI <> Decimal.MinValue, puts(runningItem).OI, "-")
-                                dt.Rows.Add(row)
-                            Next
+                                For runningItem As Integer = 0 To calls.Count - 1
+                                    canceller.Token.ThrowIfCancellationRequested()
+                                    Dim row As DataRow = dt.NewRow
+                                    row("Calls OI") = If(calls(runningItem).OI <> Decimal.MinValue, calls(runningItem).OI, "-")
+                                    row("Calls ChangeInOI") = If(calls(runningItem).ChangeInOI <> Decimal.MinValue, calls(runningItem).ChangeInOI, "-")
+                                    row("Calls Volume") = If(calls(runningItem).Volume <> Decimal.MinValue, calls(runningItem).Volume, "-")
+                                    row("Calls IV") = If(calls(runningItem).IV <> Decimal.MinValue, calls(runningItem).IV, "-")
+                                    row("Calls LTP") = If(calls(runningItem).LTP <> Decimal.MinValue, calls(runningItem).LTP, "-")
+                                    row("Calls NetChange") = If(calls(runningItem).NetChange <> Decimal.MinValue, calls(runningItem).NetChange, "-")
+                                    row("Calls BidQuantity") = If(calls(runningItem).BidQuantity <> Decimal.MinValue, calls(runningItem).BidQuantity, "-")
+                                    row("Calls BidPrice") = If(calls(runningItem).BidPrice <> Decimal.MinValue, calls(runningItem).BidPrice, "-")
+                                    row("Calls AskPrice") = If(calls(runningItem).AskPrice <> Decimal.MinValue, calls(runningItem).AskPrice, "-")
+                                    row("Calls AskQuantity") = If(calls(runningItem).AskQuantity <> Decimal.MinValue, calls(runningItem).AskQuantity, "-")
+                                    row("StrikePrice") = If(calls(runningItem).StrikePrice <> Decimal.MinValue, calls(runningItem).StrikePrice, "-")
+                                    row("Puts BidQuantity") = If(puts(runningItem).BidQuantity <> Decimal.MinValue, puts(runningItem).BidQuantity, "-")
+                                    row("Puts BidPrice") = If(puts(runningItem).BidPrice <> Decimal.MinValue, puts(runningItem).BidPrice, "-")
+                                    row("Puts AskPrice") = If(puts(runningItem).AskPrice <> Decimal.MinValue, puts(runningItem).AskPrice, "-")
+                                    row("Puts AskQuantity") = If(puts(runningItem).AskQuantity <> Decimal.MinValue, puts(runningItem).AskQuantity, "-")
+                                    row("Puts NetChange") = If(puts(runningItem).NetChange <> Decimal.MinValue, puts(runningItem).NetChange, "-")
+                                    row("Puts LTP") = If(puts(runningItem).LTP <> Decimal.MinValue, puts(runningItem).LTP, "-")
+                                    row("Puts IV") = If(puts(runningItem).IV <> Decimal.MinValue, puts(runningItem).IV, "-")
+                                    row("Puts Volume") = If(puts(runningItem).Volume <> Decimal.MinValue, puts(runningItem).Volume, "-")
+                                    row("Puts ChangeInOI") = If(puts(runningItem).ChangeInOI <> Decimal.MinValue, puts(runningItem).ChangeInOI, "-")
+                                    row("Puts OI") = If(puts(runningItem).OI <> Decimal.MinValue, puts(runningItem).OI, "-")
+                                    dt.Rows.Add(row)
+                                Next
+                                Dim insertDataString As String = Nothing
+                                For Each runningCalls In calls
+                                    canceller.Token.ThrowIfCancellationRequested()
+                                    insertDataString = String.Format("{0},('{1}','{2}',{3},'{4}',{5},{6},{7},{8},{9},{10},{11},{12},{13},{14},TIMESTAMP(CURRENT_TIME))",
+                                                                        insertDataString,
+                                                                        Now.ToString("yyyy-MM-dd"),
+                                                                        runningStock.ToUpper,
+                                                                        runningCalls.StrikePrice,
+                                                                        "CE",
+                                                                        runningCalls.OI,
+                                                                        runningCalls.ChangeInOI,
+                                                                        runningCalls.Volume,
+                                                                        runningCalls.IV,
+                                                                        runningCalls.LTP,
+                                                                        runningCalls.NetChange,
+                                                                        runningCalls.BidQuantity,
+                                                                        runningCalls.BidPrice,
+                                                                        runningCalls.AskPrice,
+                                                                        runningCalls.AskQuantity)
+                                Next
+                                For Each runningPuts In puts
+                                    canceller.Token.ThrowIfCancellationRequested()
+                                    insertDataString = String.Format("{0},('{1}','{2}',{3},'{4}',{5},{6},{7},{8},{9},{10},{11},{12},{13},{14},TIMESTAMP(CURRENT_TIME))",
+                                                                        insertDataString,
+                                                                        Now.ToString("yyyy-MM-dd"),
+                                                                        runningStock.ToUpper,
+                                                                        runningPuts.StrikePrice,
+                                                                        "PE",
+                                                                        runningPuts.OI,
+                                                                        runningPuts.ChangeInOI,
+                                                                        runningPuts.Volume,
+                                                                        runningPuts.IV,
+                                                                        runningPuts.LTP,
+                                                                        runningPuts.NetChange,
+                                                                        runningPuts.BidQuantity,
+                                                                        runningPuts.BidPrice,
+                                                                        runningPuts.AskPrice,
+                                                                        runningPuts.AskQuantity)
+                                Next
+
+                                If insertDataString IsNot Nothing Then
+                                    Dim insertString As String = String.Format("INSERT INTO `nse_option_chain` 
+                                                                                (`SnapshotDate`,
+                                                                                `InstrumentName`,
+                                                                                `StrikePrice`,
+                                                                                `CallPut`,
+                                                                                `OI`,
+                                                                                `ChangeInOI`,
+                                                                                `Volume`,
+                                                                                `IV`,
+                                                                                `LTP`,
+                                                                                `NetChange`,
+                                                                                `BidQuantity`,
+                                                                                `BidPrice`,
+                                                                                `AskPrice`,
+                                                                                `AskQuantity`,
+                                                                                `UpdateToDBTime`) 
+                                                                                VALUES {0} 
+                                                                                ON DUPLICATE KEY UPDATE 
+                                                                                `SnapshotDate`=VALUES(`SnapshotDate`),
+                                                                                `InstrumentName`=VALUES(`InstrumentName`),
+                                                                                `StrikePrice`=VALUES(`StrikePrice`),
+                                                                                `CallPut`=VALUES(`CallPut`),
+                                                                                `OI`=VALUES(`OI`),
+                                                                                `ChangeInOI`=VALUES(`ChangeInOI`),
+                                                                                `Volume`=VALUES(`Volume`),
+                                                                                `IV`=VALUES(`IV`),
+                                                                                `LTP`=VALUES(`LTP`),
+                                                                                `NetChange`=VALUES(`NetChange`),
+                                                                                `BidQuantity`=VALUES(`BidQuantity`),
+                                                                                `BidPrice`=VALUES(`BidPrice`),
+                                                                                `AskPrice`=VALUES(`AskPrice`),
+                                                                                `AskQuantity`=VALUES(`AskQuantity`),
+                                                                                `UpdateToDBTime`=VALUES(`UpdateToDBTime`));", insertDataString.Substring(1))
+
+                                    canceller.Token.ThrowIfCancellationRequested()
+                                    Dim numberOfdata As Integer = Await sqlHlpr.RunUpdateAsync(insertString).ConfigureAwait(False)
+                                End If
+                                canceller.Token.ThrowIfCancellationRequested()
+                            End If
                             canceller.Token.ThrowIfCancellationRequested()
                         End If
-                        canceller.Token.ThrowIfCancellationRequested()
-                    End If
-                Next
+                    Next
+                End Using
             End If
         Catch cex As OperationCanceledException
             MsgBox(cex.Message)
