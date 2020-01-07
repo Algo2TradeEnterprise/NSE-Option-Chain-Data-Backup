@@ -375,37 +375,9 @@ Public Class frmMain
                             canceller.Token.ThrowIfCancellationRequested()
 
                             OnHeartbeat("Creating table of option chain data")
-                            Dim dt As DataTable = New DataTable
-
                             canceller.Token.ThrowIfCancellationRequested()
                             If calls IsNot Nothing AndAlso calls.Count > 0 AndAlso puts IsNot Nothing AndAlso puts.Count > 0 AndAlso calls.Count = puts.Count Then
                                 canceller.Token.ThrowIfCancellationRequested()
-                                For runningItem As Integer = 0 To calls.Count - 1
-                                    canceller.Token.ThrowIfCancellationRequested()
-                                    Dim row As DataRow = dt.NewRow
-                                    row("Calls OI") = If(calls(runningItem).OI <> Decimal.MinValue, calls(runningItem).OI, "-")
-                                    row("Calls ChangeInOI") = If(calls(runningItem).ChangeInOI <> Decimal.MinValue, calls(runningItem).ChangeInOI, "-")
-                                    row("Calls Volume") = If(calls(runningItem).Volume <> Decimal.MinValue, calls(runningItem).Volume, "-")
-                                    row("Calls IV") = If(calls(runningItem).IV <> Decimal.MinValue, calls(runningItem).IV, "-")
-                                    row("Calls LTP") = If(calls(runningItem).LTP <> Decimal.MinValue, calls(runningItem).LTP, "-")
-                                    row("Calls NetChange") = If(calls(runningItem).NetChange <> Decimal.MinValue, calls(runningItem).NetChange, "-")
-                                    row("Calls BidQuantity") = If(calls(runningItem).BidQuantity <> Decimal.MinValue, calls(runningItem).BidQuantity, "-")
-                                    row("Calls BidPrice") = If(calls(runningItem).BidPrice <> Decimal.MinValue, calls(runningItem).BidPrice, "-")
-                                    row("Calls AskPrice") = If(calls(runningItem).AskPrice <> Decimal.MinValue, calls(runningItem).AskPrice, "-")
-                                    row("Calls AskQuantity") = If(calls(runningItem).AskQuantity <> Decimal.MinValue, calls(runningItem).AskQuantity, "-")
-                                    row("StrikePrice") = If(calls(runningItem).StrikePrice <> Decimal.MinValue, calls(runningItem).StrikePrice, "-")
-                                    row("Puts BidQuantity") = If(puts(runningItem).BidQuantity <> Decimal.MinValue, puts(runningItem).BidQuantity, "-")
-                                    row("Puts BidPrice") = If(puts(runningItem).BidPrice <> Decimal.MinValue, puts(runningItem).BidPrice, "-")
-                                    row("Puts AskPrice") = If(puts(runningItem).AskPrice <> Decimal.MinValue, puts(runningItem).AskPrice, "-")
-                                    row("Puts AskQuantity") = If(puts(runningItem).AskQuantity <> Decimal.MinValue, puts(runningItem).AskQuantity, "-")
-                                    row("Puts NetChange") = If(puts(runningItem).NetChange <> Decimal.MinValue, puts(runningItem).NetChange, "-")
-                                    row("Puts LTP") = If(puts(runningItem).LTP <> Decimal.MinValue, puts(runningItem).LTP, "-")
-                                    row("Puts IV") = If(puts(runningItem).IV <> Decimal.MinValue, puts(runningItem).IV, "-")
-                                    row("Puts Volume") = If(puts(runningItem).Volume <> Decimal.MinValue, puts(runningItem).Volume, "-")
-                                    row("Puts ChangeInOI") = If(puts(runningItem).ChangeInOI <> Decimal.MinValue, puts(runningItem).ChangeInOI, "-")
-                                    row("Puts OI") = If(puts(runningItem).OI <> Decimal.MinValue, puts(runningItem).OI, "-")
-                                    dt.Rows.Add(row)
-                                Next
                                 Dim insertDataString As String = Nothing
                                 For Each runningCalls In calls
                                     canceller.Token.ThrowIfCancellationRequested()

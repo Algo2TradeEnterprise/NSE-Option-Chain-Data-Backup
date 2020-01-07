@@ -79,6 +79,7 @@ Partial Class frmMain
         Me.Controls.Add(Me.btnStart)
         Me.Icon = CType(resources.GetObject("$this.Icon"), System.Drawing.Icon)
         Me.Name = "frmMain"
+        Me.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen
         Me.Text = "NSE Option Chain Data Backup"
         Me.ResumeLayout(False)
 
