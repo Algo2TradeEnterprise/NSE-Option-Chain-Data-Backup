@@ -451,7 +451,7 @@ Public Class frmMain
                                                                                 `BidPrice`=VALUES(`BidPrice`),
                                                                                 `AskPrice`=VALUES(`AskPrice`),
                                                                                 `AskQuantity`=VALUES(`AskQuantity`),
-                                                                                `UpdateToDBTime`=VALUES(`UpdateToDBTime`));", insertDataString.Substring(1))
+                                                                                `UpdateToDBTime`=VALUES(`UpdateToDBTime`);", insertDataString.Substring(1))
 
                                     canceller.Token.ThrowIfCancellationRequested()
                                     Dim numberOfdata As Integer = Await sqlHlpr.RunUpdateAsync(insertString).ConfigureAwait(False)
