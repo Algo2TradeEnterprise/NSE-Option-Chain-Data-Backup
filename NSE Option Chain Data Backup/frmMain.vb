@@ -379,43 +379,43 @@ Public Class frmMain
                             If calls IsNot Nothing AndAlso calls.Count > 0 AndAlso puts IsNot Nothing AndAlso puts.Count > 0 AndAlso calls.Count = puts.Count Then
                                 canceller.Token.ThrowIfCancellationRequested()
                                 Dim insertDataString As String = Nothing
-                                For Each runningCalls In calls
+                                For Each runningCall In calls
                                     canceller.Token.ThrowIfCancellationRequested()
                                     insertDataString = String.Format("{0},('{1}','{2}',{3},'{4}',{5},{6},{7},{8},{9},{10},{11},{12},{13},{14},TIMESTAMP(CURRENT_TIME))",
                                                                         insertDataString,
                                                                         Now.ToString("yyyy-MM-dd"),
                                                                         runningStock.ToUpper,
-                                                                        runningCalls.StrikePrice,
+                                                                        runningCall.StrikePrice,
                                                                         "CE",
-                                                                        runningCalls.OI,
-                                                                        runningCalls.ChangeInOI,
-                                                                        runningCalls.Volume,
-                                                                        runningCalls.IV,
-                                                                        runningCalls.LTP,
-                                                                        runningCalls.NetChange,
-                                                                        runningCalls.BidQuantity,
-                                                                        runningCalls.BidPrice,
-                                                                        runningCalls.AskPrice,
-                                                                        runningCalls.AskQuantity)
+                                                                        If(runningCall.OI <> Decimal.MinValue, runningCall.OI, Nothing),
+                                                                        If(runningCall.ChangeInOI <> Decimal.MinValue, runningCall.ChangeInOI, Nothing),
+                                                                        If(runningCall.Volume <> Decimal.MinValue, runningCall.Volume, Nothing),
+                                                                        If(runningCall.IV <> Decimal.MinValue, runningCall.IV, Nothing),
+                                                                        If(runningCall.LTP <> Decimal.MinValue, runningCall.LTP, Nothing),
+                                                                        If(runningCall.NetChange <> Decimal.MinValue, runningCall.NetChange, Nothing),
+                                                                        If(runningCall.BidQuantity <> Decimal.MinValue, runningCall.BidQuantity, Nothing),
+                                                                        If(runningCall.BidPrice <> Decimal.MinValue, runningCall.BidPrice, Nothing),
+                                                                        If(runningCall.AskPrice <> Decimal.MinValue, runningCall.AskPrice, Nothing),
+                                                                        If(runningCall.AskQuantity <> Decimal.MinValue, runningCall.AskQuantity, Nothing))
                                 Next
-                                For Each runningPuts In puts
+                                For Each runningPut In puts
                                     canceller.Token.ThrowIfCancellationRequested()
                                     insertDataString = String.Format("{0},('{1}','{2}',{3},'{4}',{5},{6},{7},{8},{9},{10},{11},{12},{13},{14},TIMESTAMP(CURRENT_TIME))",
                                                                         insertDataString,
                                                                         Now.ToString("yyyy-MM-dd"),
                                                                         runningStock.ToUpper,
-                                                                        runningPuts.StrikePrice,
+                                                                        runningPut.StrikePrice,
                                                                         "PE",
-                                                                        runningPuts.OI,
-                                                                        runningPuts.ChangeInOI,
-                                                                        runningPuts.Volume,
-                                                                        runningPuts.IV,
-                                                                        runningPuts.LTP,
-                                                                        runningPuts.NetChange,
-                                                                        runningPuts.BidQuantity,
-                                                                        runningPuts.BidPrice,
-                                                                        runningPuts.AskPrice,
-                                                                        runningPuts.AskQuantity)
+                                                                        If(runningPut.OI <> Decimal.MinValue, runningPut.OI, Nothing),
+                                                                        If(runningPut.ChangeInOI <> Decimal.MinValue, runningPut.ChangeInOI, Nothing),
+                                                                        If(runningPut.Volume <> Decimal.MinValue, runningPut.Volume, Nothing),
+                                                                        If(runningPut.IV <> Decimal.MinValue, runningPut.IV, Nothing),
+                                                                        If(runningPut.LTP <> Decimal.MinValue, runningPut.LTP, Nothing),
+                                                                        If(runningPut.NetChange <> Decimal.MinValue, runningPut.NetChange, Nothing),
+                                                                        If(runningPut.BidQuantity <> Decimal.MinValue, runningPut.BidQuantity, Nothing),
+                                                                        If(runningPut.BidPrice <> Decimal.MinValue, runningPut.BidPrice, Nothing),
+                                                                        If(runningPut.AskPrice <> Decimal.MinValue, runningPut.AskPrice, Nothing),
+                                                                        If(runningPut.AskQuantity <> Decimal.MinValue, runningPut.AskQuantity, Nothing))
                                 Next
 
                                 If insertDataString IsNot Nothing Then
@@ -476,7 +476,7 @@ Public Class frmMain
 
     Private Async Function GetAllStockList() As Task(Of List(Of String))
         Dim ret As List(Of String) = Nothing
-        Dim selectString As String = "SELECT `TRADING_SYMBOL` FROM `active_instruments_futures` WHERE `AS_ON_DATE`={0} AND `SEGMENT`='NFO-FUT'"
+        Dim selectString As String = "SELECT `TRADING_SYMBOL` FROM `active_instruments_futures` WHERE `AS_ON_DATE`='{0}' AND `SEGMENT`='NFO-FUT'"
         selectString = String.Format(selectString, Now.ToString("yyyy-MM-dd"))
         Using sqlHlpr As New MySQLDBHelper(My.Settings.ServerName, "local_stock", "3306", "rio", "speech123", canceller)
             AddHandler sqlHlpr.Heartbeat, AddressOf OnHeartbeat
